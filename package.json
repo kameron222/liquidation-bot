@@ -1,0 +1,30 @@
+{
+  "name": "liquidation-bot",
+  "version": "0.1.0",
+  "description": "Multi-protocol DeFi liquidation bot on Base mainnet (Moonwell, Morpho Blue).",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node --env-file=.env src/index.js",
+    "test": "vitest run",
+    "monitor": "node --env-file=.env src/index.js --mode=monitor",
+    "test:fork": "bash -c 'set -a && source .env && set +a && forge test --fork-url \"$ALCHEMY_HTTP_URL\"'",
+    "verify:config": "node --env-file=.env src/scripts/verify-moonwell-config.js",
+    "pnl": "node src/scripts/pnl.js",
+    "deploy:liquidator": "bash -c 'set -a && source .env && set +a && forge script script/DeployLiquidator.s.sol --rpc-url \"$ALCHEMY_HTTP_URL\" --private-key \"$PRIVATE_KEY\" --broadcast'"
+  },
+  "license": "MIT",
+  "private": true,
+  "dependencies": {
+    "axios": "^1.15.2",
+    "dotenv": "^17.4.2",
+    "viem": "^2.48.4",
+    "winston": "^3.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "vitest": "^3.2.4"
+  }
+}

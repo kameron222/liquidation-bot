@@ -1,0 +1,9 @@
+node_modules/
+.env
+logs/*.log
+out/
+cache/
+forge-cache/
+broadcast/
+.DS_Store
+data/
