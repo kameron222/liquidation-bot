@@ -17,7 +17,9 @@ import { base } from 'viem/chains';
 
 import { config } from '../config/config.js';
 import { MOONWELL_BASE } from '../config/moonwell.js';
+import { MORPHO_BASE } from '../config/morpho.js';
 import { MoonwellAdapter } from '../adapters/MoonwellAdapter.js';
+import { MorphoBlueAdapter } from '../adapters/MorphoBlueAdapter.js';
 import { Executor } from '../core/Executor.js';
 import { PositionMonitor } from '../core/PositionMonitor.js';
 import { BorrowerCache } from '../core/BorrowerCache.js';
@@ -30,6 +32,7 @@ import logger from '../utils/logger.js';
 const PID_PATH = './data/bot.pid';
 const BORROWER_CACHE_PATH = './data/borrowers-moonwell-base.json';
 const TOKEN_META_CACHE_PATH = './data/moonwell-tokens-base.json';
+const MORPHO_BORROWER_CACHE_PATH = './data/borrowers-morpho-base.json';
 const PNL_LEDGER_PATH = './data/pnl.jsonl';
 
 // Free public Base RPCs used only for `eth_getLogs` borrower discovery.
@@ -76,11 +79,11 @@ async function ensureSingleInstance(pidPath) {
 }
 
 async function main() {
-  if (!config.liquidatorAddress) {
+  if (config.enableMoonwell && !config.liquidatorAddress) {
     throw new Error(
       'LIQUIDATOR_ADDRESS is not set. Deploy the Liquidator contract first:\n' +
       '  npm run deploy:liquidator\n' +
-      'then copy the deployed address into .env.',
+      'then copy the deployed address into .env (or set ENABLE_MOONWELL=false).',
     );
   }
 
@@ -119,32 +122,65 @@ async function main() {
     dryRun: config.dryRun,
   });
 
-  const borrowerCache = new BorrowerCache({ path: BORROWER_CACHE_PATH });
   const tokenCache = new TokenMetadataCache({ path: TOKEN_META_CACHE_PATH });
 
-  const adapter = new MoonwellAdapter({
-    client: publicClient,
-    logsClient,
-    cache: borrowerCache,
-    tokenCache,
-    comptroller: MOONWELL_BASE.comptroller,
-    mTokens: MOONWELL_BASE.mTokens,
-    deployBlock: MOONWELL_BASE.deployBlock,
-    liquidatorAddress: config.liquidatorAddress,
-    // ~46 days at 2s blocks. Bounds the cold-start scan; subsequent restarts
-    // resume from the cache's lastScannedBlock so this only matters once.
-    indexLookbackBlocks: 2_000_000n,
-    // Sharded shortfall scan: 4 shards × full scan every 30 calls. With
-    // block-cadence ticks (2s) every borrower is checked at least every
-    // ~60s, while per-tick RPC load drops ~4×.
-    shardCount: 4,
-    forceFullEvery: 30,
-  });
+  // Build the adapter graph. Each protocol is opt-out-able (ENABLE_MOONWELL /
+  // ENABLE_MORPHO) and only runs when its executor address is configured, so a
+  // single-protocol deploy doesn't need the other contract.
+  const adapters = [];
+
+  if (config.enableMoonwell) {
+    adapters.push(new MoonwellAdapter({
+      client: publicClient,
+      logsClient,
+      cache: new BorrowerCache({ path: BORROWER_CACHE_PATH }),
+      tokenCache,
+      comptroller: MOONWELL_BASE.comptroller,
+      mTokens: MOONWELL_BASE.mTokens,
+      deployBlock: MOONWELL_BASE.deployBlock,
+      liquidatorAddress: config.liquidatorAddress,
+      // ~46 days at 2s blocks. Bounds the cold-start scan; subsequent restarts
+      // resume from the cache's lastScannedBlock so this only matters once.
+      indexLookbackBlocks: 2_000_000n,
+      // Sharded shortfall scan: 4 shards × full scan every 30 calls. With
+      // block-cadence ticks (2s) every borrower is checked at least every
+      // ~60s, while per-tick RPC load drops ~4×.
+      shardCount: 4,
+      forceFullEvery: 30,
+    }));
+  }
+
+  if (config.enableMorpho) {
+    if (!config.morphoLiquidatorAddress) {
+      logger.warn('main.morpho disabled — MORPHO_LIQUIDATOR_ADDRESS unset', {
+        hint: 'npm run deploy:morpho-liquidator, then set MORPHO_LIQUIDATOR_ADDRESS in .env',
+      });
+    } else {
+      adapters.push(new MorphoBlueAdapter({
+        client: publicClient,
+        logsClient,
+        cache: new BorrowerCache({ path: MORPHO_BORROWER_CACHE_PATH }),
+        morpho: MORPHO_BASE.morpho,
+        markets: MORPHO_BASE.markets,
+        quoter: MORPHO_BASE.quoter,
+        chainlinkEthUsd: MORPHO_BASE.chainlinkEthUsd,
+        deployBlock: MORPHO_BASE.deployBlock,
+        liquidatorAddress: config.morphoLiquidatorAddress,
+        indexLookbackBlocks: 2_000_000n,
+        shardCount: 4,
+        forceFullEvery: 30,
+      }));
+    }
+  }
+
+  if (adapters.length === 0) {
+    throw new Error('No adapters enabled. Set ENABLE_MOONWELL/ENABLE_MORPHO and the matching liquidator address.');
+  }
 
   const ledger = new PnlLedger({ path: PNL_LEDGER_PATH });
 
   const monitor = new PositionMonitor({
-    adapters: [adapter],
+    adapters,
     executor,
     notifier,
     minProfitUsd: config.minProfitUsd,
@@ -165,7 +201,9 @@ async function main() {
 
   logger.info('main.start', {
     account: account.address,
-    liquidator: config.liquidatorAddress,
+    adapters: adapters.map((a) => a.constructor.name),
+    moonwellLiquidator: config.enableMoonwell ? config.liquidatorAddress : 'disabled',
+    morphoLiquidator: config.morphoLiquidatorAddress ?? 'disabled',
   });
   await monitor.start();
 }

@@ -41,18 +41,18 @@ interface IPriceOracle {
  * Run: `npm run test:fork` (which is `forge test --fork-url $ALCHEMY_HTTP_URL`).
  */
 contract LiquidatorForkTest is Test {
-    address constant COMPTROLLER  = 0xfBb21d0380beE3312B33c4353c8936a0F13EF26C;
-    address constant MWETH        = 0x628ff693426583D9a7FB391E54366292F509D457;
-    address constant MUSDC        = 0xEdc817A28E8B93B03976FBd4a3dDBc9f7D176c22;
-    address constant MAERO        = 0x73902f619CEB9B31FD8EFecf435CbDf89E369Ba6;
-    address constant WETH         = 0x4200000000000000000000000000000000000006;
-    address constant USDC         = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
-    address constant AERO         = 0x940181a94A35A4569E4529A3CDfB74e38FD98631;
-    address constant AAVE_POOL    = 0xA238Dd80C259a72e81d7e4664a9801593F98d1c5;
-    address constant SWAP_ROUTER  = 0x2626664c2603336E57B271c5C0b26F421741e481;
-    address constant AERO_ROUTER  = 0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43;
+    address constant COMPTROLLER = 0xfBb21d0380beE3312B33c4353c8936a0F13EF26C;
+    address constant MWETH = 0x628ff693426583D9a7FB391E54366292F509D457;
+    address constant MUSDC = 0xEdc817A28E8B93B03976FBd4a3dDBc9f7D176c22;
+    address constant MAERO = 0x73902f619CEB9B31FD8EFecf435CbDf89E369Ba6;
+    address constant WETH = 0x4200000000000000000000000000000000000006;
+    address constant USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
+    address constant AERO = 0x940181a94A35A4569E4529A3CDfB74e38FD98631;
+    address constant AAVE_POOL = 0xA238Dd80C259a72e81d7e4664a9801593F98d1c5;
+    address constant SWAP_ROUTER = 0x2626664c2603336E57B271c5C0b26F421741e481;
+    address constant AERO_ROUTER = 0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43;
 
-    address owner    = address(0xBEEF);
+    address owner = address(0xBEEF);
     address borrower = address(0xA11CE);
 
     Liquidator liquidator;
@@ -75,8 +75,7 @@ contract LiquidatorForkTest is Test {
         IComptroller(COMPTROLLER).enterMarkets(markets);
 
         // 2. Borrow ~85% of the chain-reported capacity in USDC.
-        (uint256 liqErr, uint256 liquidity, ) =
-            IComptroller(COMPTROLLER).getAccountLiquidity(borrower);
+        (uint256 liqErr, uint256 liquidity,) = IComptroller(COMPTROLLER).getAccountLiquidity(borrower);
         require(liqErr == 0, "liquidity err");
         require(liquidity > 0, "no borrowing power");
         // liquidity is USD scaled to 1e18; USDC has 6 decimals.
@@ -94,7 +93,7 @@ contract LiquidatorForkTest is Test {
             abi.encode(realWethPrice / 2)
         );
 
-        (, , uint256 shortfall) = IComptroller(COMPTROLLER).getAccountLiquidity(borrower);
+        (,, uint256 shortfall) = IComptroller(COMPTROLLER).getAccountLiquidity(borrower);
         assertGt(shortfall, 0, "expected shortfall after price crash");
 
         // 4. Repay a small slice of the USDC debt: 100 USDC, well below the
@@ -148,7 +147,7 @@ contract LiquidatorForkTest is Test {
         markets[0] = MUSDC;
         IComptroller(COMPTROLLER).enterMarkets(markets);
 
-        (uint256 liqErr, uint256 liquidity, ) = IComptroller(COMPTROLLER).getAccountLiquidity(borrower);
+        (uint256 liqErr, uint256 liquidity,) = IComptroller(COMPTROLLER).getAccountLiquidity(borrower);
         require(liqErr == 0 && liquidity > 0, "no borrowing power");
         // liquidity is USD scaled to 1e18; WETH has 18 decimals. Convert via
         // the chain-reported WETH price (mantissa 1e36/decimals → 1e18 here).
@@ -167,7 +166,7 @@ contract LiquidatorForkTest is Test {
             abi.encode(realUsdcPrice / 2)
         );
 
-        (, , uint256 shortfall) = IComptroller(COMPTROLLER).getAccountLiquidity(borrower);
+        (,, uint256 shortfall) = IComptroller(COMPTROLLER).getAccountLiquidity(borrower);
         assertGt(shortfall, 0, "expected shortfall");
 
         // Repay 0.01 WETH.
@@ -205,7 +204,7 @@ contract LiquidatorForkTest is Test {
         markets[0] = MAERO;
         IComptroller(COMPTROLLER).enterMarkets(markets);
 
-        (uint256 liqErr, uint256 liquidity, ) = IComptroller(COMPTROLLER).getAccountLiquidity(borrower);
+        (uint256 liqErr, uint256 liquidity,) = IComptroller(COMPTROLLER).getAccountLiquidity(borrower);
         require(liqErr == 0 && liquidity > 0, "no borrowing power");
         uint256 borrowAmount = (liquidity * 85 / 100) / 1e12;
         require(borrowAmount > 0, "borrowAmount zero");
@@ -220,7 +219,7 @@ contract LiquidatorForkTest is Test {
             abi.encode(realAeroPrice / 2)
         );
 
-        (, , uint256 shortfall) = IComptroller(COMPTROLLER).getAccountLiquidity(borrower);
+        (,, uint256 shortfall) = IComptroller(COMPTROLLER).getAccountLiquidity(borrower);
         assertGt(shortfall, 0, "expected shortfall");
 
         uint256 repayAmount = 50e6; // $50 USDC

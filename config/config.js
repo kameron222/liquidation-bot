@@ -35,11 +35,21 @@ function num(name, fallback) {
   return parsed;
 }
 
+function bool(name, fallback) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return fallback;
+  const v = raw.toLowerCase();
+  return v === 'true' || v === '1' || v === 'yes';
+}
+
 export const config = {
   alchemyHttp:        required('ALCHEMY_HTTP_URL'),
   alchemyWs:          optional('ALCHEMY_WS_URL'),
   privateKey:         required('PRIVATE_KEY'),
   liquidatorAddress:  optional('LIQUIDATOR_ADDRESS'),
+  morphoLiquidatorAddress: optional('MORPHO_LIQUIDATOR_ADDRESS'),
+  enableMoonwell:     bool('ENABLE_MOONWELL', true),
+  enableMorpho:       bool('ENABLE_MORPHO', true),
   discordWebhook:     optional('DISCORD_WEBHOOK_URL'),
   minProfitUsd:       num('MIN_PROFIT_USD', 0.5),
   maxGasGwei:         num('MAX_GAS_PRICE_GWEI', 50),

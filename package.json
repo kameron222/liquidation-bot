@@ -12,8 +12,11 @@
     "monitor": "node --env-file=.env src/index.js --mode=monitor",
     "test:fork": "bash -c 'set -a && source .env && set +a && forge test --fork-url \"$ALCHEMY_HTTP_URL\"'",
     "verify:config": "node --env-file=.env src/scripts/verify-moonwell-config.js",
+    "verify:morpho": "node --env-file=.env src/scripts/verify-morpho-config.js",
+    "benchmark:morpho": "node --env-file=.env src/scripts/benchmark-morpho.js",
     "pnl": "node src/scripts/pnl.js",
-    "deploy:liquidator": "bash -c 'set -a && source .env && set +a && forge script script/DeployLiquidator.s.sol --rpc-url \"$ALCHEMY_HTTP_URL\" --private-key \"$PRIVATE_KEY\" --broadcast'"
+    "deploy:liquidator": "bash -c 'set -a && source .env && set +a && forge script script/DeployLiquidator.s.sol --rpc-url \"$ALCHEMY_HTTP_URL\" --private-key \"$PRIVATE_KEY\" --broadcast'",
+    "deploy:morpho-liquidator": "bash -c 'set -a && source .env && set +a && forge script script/DeployMorphoLiquidator.s.sol --rpc-url \"$ALCHEMY_HTTP_URL\" --private-key \"$PRIVATE_KEY\" --broadcast'"
   },
   "license": "MIT",
   "private": true,

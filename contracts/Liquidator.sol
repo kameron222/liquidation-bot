@@ -49,21 +49,13 @@ interface IPool {
 }
 
 interface IFlashLoanSimpleReceiver {
-    function executeOperation(
-        address asset,
-        uint256 amount,
-        uint256 premium,
-        address initiator,
-        bytes calldata params
-    ) external returns (bool);
+    function executeOperation(address asset, uint256 amount, uint256 premium, address initiator, bytes calldata params)
+        external
+        returns (bool);
 }
 
 interface ICToken {
-    function liquidateBorrow(
-        address borrower,
-        uint256 repayAmount,
-        address cTokenCollateral
-    ) external returns (uint256);
+    function liquidateBorrow(address borrower, uint256 repayAmount, address cTokenCollateral) external returns (uint256);
 
     function redeem(uint256 redeemTokens) external returns (uint256);
 
@@ -116,21 +108,17 @@ contract Liquidator is Ownable, IFlashLoanSimpleReceiver {
     error EmptySeizure();
     error UnknownVenue(uint8 venue);
 
-    uint8 internal constant VENUE_V3   = 0;
+    uint8 internal constant VENUE_V3 = 0;
     uint8 internal constant VENUE_AERO = 1;
 
-    IPool          public immutable POOL;
-    IV3SwapRouter  public immutable SWAP_ROUTER;
+    IPool public immutable POOL;
+    IV3SwapRouter public immutable SWAP_ROUTER;
     IAerodromeRouter public immutable AERO_ROUTER;
-    IWETH9         public immutable WETH;
+    IWETH9 public immutable WETH;
 
-    constructor(
-        address pool,
-        address swapRouter,
-        address aeroRouter,
-        address weth,
-        address initialOwner
-    ) Ownable(initialOwner) {
+    constructor(address pool, address swapRouter, address aeroRouter, address weth, address initialOwner)
+        Ownable(initialOwner)
+    {
         POOL = IPool(pool);
         SWAP_ROUTER = IV3SwapRouter(swapRouter);
         AERO_ROUTER = IAerodromeRouter(aeroRouter);
@@ -177,13 +165,11 @@ contract Liquidator is Ownable, IFlashLoanSimpleReceiver {
      * Aave callback. Decodes the venue tag, runs the protocol-side liquidation
      * + redeem, then dispatches the swap to the right venue.
      */
-    function executeOperation(
-        address asset,
-        uint256 amount,
-        uint256 premium,
-        address initiator,
-        bytes calldata params
-    ) external override returns (bool) {
+    function executeOperation(address asset, uint256 amount, uint256 premium, address initiator, bytes calldata params)
+        external
+        override
+        returns (bool)
+    {
         if (msg.sender != address(POOL)) revert NotPool();
         if (initiator != address(this)) revert NotInitiator();
 
@@ -226,10 +212,7 @@ contract Liquidator is Ownable, IFlashLoanSimpleReceiver {
             IERC20(collUnderlying).forceApprove(address(SWAP_ROUTER), collBal);
             SWAP_ROUTER.exactInput(
                 IV3SwapRouter.ExactInputParams({
-                    path: swapPath,
-                    recipient: address(this),
-                    amountIn: collBal,
-                    amountOutMinimum: amountOutMinimum
+                    path: swapPath, recipient: address(this), amountIn: collBal, amountOutMinimum: amountOutMinimum
                 })
             );
             IERC20(collUnderlying).forceApprove(address(SWAP_ROUTER), 0);
@@ -251,13 +234,7 @@ contract Liquidator is Ownable, IFlashLoanSimpleReceiver {
         _wrapNativeIfWeth(collUnderlying);
         uint256 collBal = IERC20(collUnderlying).balanceOf(address(this));
         IERC20(collUnderlying).forceApprove(address(AERO_ROUTER), collBal);
-        AERO_ROUTER.swapExactTokensForTokens(
-            collBal,
-            amountOutMinimum,
-            aeroRoutes,
-            address(this),
-            block.timestamp
-        );
+        AERO_ROUTER.swapExactTokensForTokens(collBal, amountOutMinimum, aeroRoutes, address(this), block.timestamp);
         IERC20(collUnderlying).forceApprove(address(AERO_ROUTER), 0);
     }
 
